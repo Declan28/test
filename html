@@ -1,0 +1,116 @@
+<div class="header">
+  <h1>Morgan Stanley | AI at MS</h1>
+</div>
+
+<div class="container">
+  <h2>File Comparison</h2> <!-- Updated to h2 for better structure -->
+
+  <div class="form-group">
+    <label for="file1">Step 1. Upload content</label>
+    <input type="file" id="file1" (change)="onFileSelected($event, 1)" accept=".pdf,.doc,.docx,.ppt" />
+    <input type="file" id="file2" (change)="onFileSelected($event, 2)" accept=".pdf,.doc,.docx,.ppt" />
+  </div>
+  
+  <div class="form-group">
+    <label for="summaryFormat">Step 2. Select action</label>
+    <select [(ngModel)]="selectedAction" id="summaryFormat">
+      <option value="identify-differences">Identify differences</option>
+      <option value="merge-documents">Merge documents</option>
+    </select>
+  </div>
+  
+  <button (click)="onUpload()">Continue</button>
+
+  <h2 *ngIf="uploadSuccess">Upload successful! File 1: {{ file1Name }}, File 2: {{ file2Name }}</h2>
+</div>
+
+
+.header
+  background-color: #003f87 // Dark blue background
+  color: white
+  padding: 10px 20px
+  text-align: center
+
+.container
+  max-width: 600px
+  margin: 20px auto // Add margin for spacing below the header
+  padding: 20px
+  border: 1px solid #ccc
+  border-radius: 5px
+  background-color: #f9f9f9
+
+  h2
+    text-align: left // Align "File Comparison" to the left
+
+  .form-group
+    margin-bottom: 20px
+
+  label
+    display: block
+    margin-bottom: 5px
+    font-weight: bold
+
+  input[type="file"]
+    display: block
+    margin: 10px 0
+
+  select
+    width: 100%
+    padding: 10px
+    margin: 10px 0
+
+  button
+    padding: 10px 15px
+    background-color: #007bff
+    color: white
+    border: none
+    border-radius: 5px
+    cursor: pointer
+
+    &:hover
+      background-color: #0056b3
+
+  h2
+    color: green
+    text-align: 
+
+
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms'; // Import FormsModule for ngModel
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.sass'],
+  standalone: true,  // Make the component standalone
+  imports: [CommonModule, FormsModule] // Add CommonModule and FormsModule to support ngIf, ngFor, and ngModel
+})
+export class AppComponent {
+  file1Name: string = '';
+  file2Name: string = '';
+  uploadSuccess: boolean = false;
+  selectedAction: string = 'identify-differences'; // Default action
+
+  // Event handler for file selection
+  onFileSelected(event: any, fileNumber: number) {
+    const file: File = event.target.files[0];
+
+    if (file) {
+      if (fileNumber === 1) {
+        this.file1Name = file.name;
+      } else if (fileNumber === 2) {
+        this.file2Name = file.name;
+      }
+    }
+  }
+
+  // Event handler for the "Continue" button
+  onUpload() {
+    if (this.file1Name && this.file2Name) {
+      this.uploadSuccess = true;
+    } else {
+      alert('Please select both files before continuing.');
+    }
+  }
+}
