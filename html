@@ -1,104 +1,207 @@
 html:
-<div class="header">
-  <h1>Morgan Stanley | AI at MS</h1>
+<div class="header-bar">
+  <div class="header-content">
+    <h1>Morgan Stanley | AI&#64;MS+</h1>
+  </div>
 </div>
 
-<div class="container">
-  <h2>File Comparison</h2>
+<div class="main-container">
+  <div class="container">
+    <h2 class="small-header">File Comparison</h2>
 
-  <div class="form-group">
-    <label for="file1">Step 1. Upload content</label>
-    <input type="file" id="file1" (change)="onFileSelected($event, 1)" accept=".pdf,.doc,.docx,.ppt" />
-    <input type="file" id="file2" (change)="onFileSelected($event, 2)" accept=".pdf,.doc,.docx,.ppt" />
+    <!-- Step 1: Upload Files -->
+    <div class="form-group">
+      <label>Step 1. Upload Content</label>
+      <div class="file-upload-container">
+        <div class="file-upload-box" (click)="onFileUploadClick(1)">
+          <input type="file" id="file1" (change)="onFileSelected($event, 1)" accept=".pdf" hidden />
+          <span *ngIf="!file1Name">Drag and drop file here, or <a>Browse</a></span>
+          <span *ngIf="file1Name">{{ file1Name }}</span>
+          <p>PDF, PPT, or Word doc (25MB Max)</p>
+        </div>
+        <div class="file-upload-box" (click)="onFileUploadClick(2)">
+          <input type="file" id="file2" (change)="onFileSelected($event, 2)" accept=".pdf" hidden />
+          <span *ngIf="!file2Name">Drag and drop file here, or <a>Browse</a></span>
+          <span *ngIf="file2Name">{{ file2Name }}</span>
+          <p>PDF, PPT, or Word doc (25MB Max)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Select Action -->
+    <div class="form-group">
+      <label for="summaryFormat">Step 2. Select Action</label>
+      <select [(ngModel)]="selectedAction" id="summaryFormat">
+        <option value="identify-differences">Identify differences</option>
+        <option value="merge-documents">Merge documents</option>
+      </select>
+    </div>
+
+    <!-- Step 3: Enter Prompt -->
+    <div class="form-group">
+      <label>Step 3. Enter Prompt</label>
+      <div class="prompt-container">
+        <input type="text" [(ngModel)]="userPrompt" placeholder="Type a message" class="prompt-input" />
+        <button (click)="onSend()" class="send-button">Send</button>
+      </div>
+    </div>
+
+    <!-- Response Section -->
+    <div *ngIf="uploadSuccess" class="response-section">
+      <h2>Comparison Report:</h2>
+      <p>{{ responseContent }}</p>
+    </div>
   </div>
-
-  <div class="form-group">
-    <label for="summaryFormat">Step 2. Select action</label>
-    <select [(ngModel)]="selectedAction" id="summaryFormat">
-      <option value="identify-differences">Identify differences</option>
-      <option value="merge-documents">Merge documents</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label for="prompt">Step 3. Enter prompt</label>
-    <input type="text" id="prompt" [(ngModel)]="userPrompt" placeholder="Enter prompt here" />
-  </div>
-
-  <button (click)="onUpload()">Continue</button>
-
-  <h2 *ngIf="uploadSuccess">Comparison Report: </h2>
-  <p *ngIf="responseContent">Response from server: {{ responseContent }}</p>
 </div>
-
 
 sass:
-.header
-  background-color: #003f87
-  color: white
-  padding: 10px 20px
-  text-align: center
+.header-bar
+  width: 100vw
+  height: 48px
+  padding: 8px 16px
+  background-color: #002451
+  display: flex
+  align-items: center
+  position: fixed
+  top: 0
+  left: 0
+  z-index: 1000
+
+  .header-content
+    width: 100%
+    display: flex
+    align-items: center
+    gap: 16px
+
+    h1
+      color: white
+      font-size: 1.5rem
+      font-weight: bold
+      margin: 0
+
+.main-container
+  background-color: #e0e0e0
+  min-height: 100vh
+  padding-top: 100px
 
 .container
   max-width: 600px
-  margin: 20px auto
+  margin: 40px auto
   padding: 20px
   border: 1px solid #ccc
   border-radius: 5px
-  background-color: #f9f9f9
+  background-color: #ffffff
+  position: relative
 
-  h2
-    text-align: left
+  .small-header
+    font-size: 0.875rem
+    font-weight: normal
+    color: #333
+    position: absolute
+    top: 8px
+    left: 16px
+    margin: 0
 
   .form-group
-    margin-bottom: 20px
+    margin-top: 20px
 
-  label
-    display: block
-    margin-bottom: 5px
-    font-weight: bold
+    label
+      display: block
+      font-weight: bold
+      margin-bottom: 8px
 
-  input[type="file"]
-    display: block
-    margin: 10px 0
+  .file-upload-container
+    display: flex
+    flex-direction: column
+    gap: 16px
 
-  input[type="text"]
-    width: 100%
-    padding: 10px
-    margin: 10px 0
+    .file-upload-box
+      border: 2px dashed #007bff
+      padding: 20px
+      border-radius: 5px
+      text-align: center
+      color: #555
+      cursor: pointer
+      transition: border-color 0.2s ease
+      position: relative
+
+      span
+        font-size: 1rem
+        color: #007bff
+
+        a
+          color: #007bff
+          font-weight: bold
+          text-decoration: underline
+          cursor: pointer
+
+      p
+        font-size: 0.875rem
+        color: #555
+        margin-top: 5px
+
+      &:hover
+        border-color: #0056b3
+
+  .prompt-container
+    display: flex
+    align-items: center
+    border: 1px solid #ccc
+    border-radius: 20px
+    padding: 10px 15px
+    margin-top: 10px
+
+    .prompt-input
+      border: none
+      outline: none
+      flex: 1
+      font-size: 1rem
+      padding: 5px
+      color: #555
+
+      &::placeholder
+        color: #aaa
+
+    .send-button
+      background-color: #007bff
+      color: white
+      border: none
+      border-radius: 20px
+      padding: 8px 16px
+      font-weight: bold
+      cursor: pointer
+      transition: background-color 0.2s ease
+
+      &:hover
+        background-color: #0056b3
 
   select
     width: 100%
     padding: 10px
-    margin: 10px 0
-
-  button
-    padding: 10px 15px
-    background-color: #007bff
-    color: white
-    border: none
-    border-radius: 5px
+    border-radius: 4px
+    border: 1px solid #ccc
+    margin-top: 8px
     cursor: pointer
 
-    &:hover
-      background-color: #0056b3
+  .response-section
+    margin-top: 20px
 
-  h2
-    color: green
+    h2
+      color: #28a745
 
 ts:
 import { Component } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';  // Import FormsModule here
-import { HttpClientModule } from '@angular/common/http';  // Import HttpClientModule here
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.sass'],
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule]  // Include FormsModule and HttpClientModule here
+  imports: [CommonModule, FormsModule, HttpClientModule] // Ensure FormsModule is included here
 })
 export class AppComponent {
   file1Name: string = '';
@@ -106,7 +209,7 @@ export class AppComponent {
   uploadSuccess: boolean = false;
   selectedAction: string = 'identify-differences';
   userPrompt: string = '';
-  responseContent: string = ''; // Define responseContent here
+  responseContent: string = '';
 
   private file1: File | null = null;
   private file2: File | null = null;
@@ -126,7 +229,14 @@ export class AppComponent {
     }
   }
 
-  onUpload() {
+  onFileUploadClick(fileNumber: number) {
+    const fileInput = document.getElementById(`file${fileNumber}`) as HTMLInputElement;
+    if (fileInput) {
+      fileInput.click();
+    }
+  }
+
+  onSend() {
     if (this.file1 && this.file2 && this.userPrompt) {
       const formData = new FormData();
       formData.append('file1', this.file1);
@@ -137,7 +247,7 @@ export class AppComponent {
       this.http.post<any>('http://127.0.0.1:5000/upload', formData).subscribe(
         (response) => {
           this.uploadSuccess = true;
-          this.responseContent = response.content; // Storing returned content
+          this.responseContent = response.content;
         },
         (error) => {
           console.error('Upload failed:', error);
@@ -145,7 +255,7 @@ export class AppComponent {
         }
       );
     } else {
-      alert('Please complete all steps before continuing.');
+      alert('Please complete all steps before sending.');
     }
   }
 }
@@ -168,7 +278,7 @@ def upload_files():
     if not file1 or not file2:
         return jsonify({"error": "Files not provided"}), 400
 
-    # Example: Read content from file1 (PDF) using PyMuPDF
+    # Read content from file1 (PDF) using PyMuPDF
     try:
         with fitz.open(stream=file1.read(), filetype="pdf") as pdf:
             content = ""
@@ -177,9 +287,8 @@ def upload_files():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    # Return the extracted content from file1 to the frontend
+
     return jsonify({"content": content})
 
 if __name__ == '__main__':
     app.run(debug=True)
-
