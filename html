@@ -11,7 +11,7 @@ html:
     <input type="file" id="file1" (change)="onFileSelected($event, 1)" accept=".pdf,.doc,.docx,.ppt" />
     <input type="file" id="file2" (change)="onFileSelected($event, 2)" accept=".pdf,.doc,.docx,.ppt" />
   </div>
-  
+
   <div class="form-group">
     <label for="summaryFormat">Step 2. Select action</label>
     <select [(ngModel)]="selectedAction" id="summaryFormat">
@@ -19,10 +19,16 @@ html:
       <option value="merge-documents">Merge documents</option>
     </select>
   </div>
-  
+
+  <div class="form-group">
+    <label for="prompt">Step 3. Enter prompt</label>
+    <input type="text" id="prompt" [(ngModel)]="userPrompt" placeholder="Enter prompt here" />
+  </div>
+
   <button (click)="onUpload()">Continue</button>
 
-  <h2 *ngIf="uploadSuccess">Upload successful! File 1: {{ file1Name }}, File 2: {{ file2Name }}</h2>
+  <h2 *ngIf="uploadSuccess">Comparison Report: </h2>
+  <p *ngIf="responseContent">Response from server: {{ responseContent }}</p>
 </div>
 
 
@@ -56,6 +62,11 @@ sass:
     display: block
     margin: 10px 0
 
+  input[type="text"]
+    width: 100%
+    padding: 10px
+    margin: 10px 0
+
   select
     width: 100%
     padding: 10px
@@ -74,25 +85,31 @@ sass:
 
   h2
     color: green
-    text-align: left
-
 
 ts:
 import { Component } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';  // Import FormsModule here
+import { HttpClientModule } from '@angular/common/http';  // Import HttpClientModule here
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.sass'],
+  standalone: true,
+  imports: [CommonModule, FormsModule, HttpClientModule]  // Include FormsModule and HttpClientModule here
 })
 export class AppComponent {
   file1Name: string = '';
   file2Name: string = '';
   uploadSuccess: boolean = false;
   selectedAction: string = 'identify-differences';
-  file1: File | null = null;
-  file2: File | null = null;
+  userPrompt: string = '';
+  responseContent: string = ''; // Define responseContent here
+
+  private file1: File | null = null;
+  private file2: File | null = null;
 
   constructor(private http: HttpClient) {}
 
@@ -110,23 +127,25 @@ export class AppComponent {
   }
 
   onUpload() {
-    if (this.file1 && this.file2) {
+    if (this.file1 && this.file2 && this.userPrompt) {
       const formData = new FormData();
       formData.append('file1', this.file1);
       formData.append('file2', this.file2);
       formData.append('action', this.selectedAction);
+      formData.append('prompt', this.userPrompt);
 
-      this.http.post('http://localhost:5000/upload', formData).subscribe(
-        (response: any) => {
-          console.log('Upload successful:', response);
+      this.http.post<any>('http://127.0.0.1:5000/upload', formData).subscribe(
+        (response) => {
           this.uploadSuccess = true;
+          this.responseContent = response.content; // Storing returned content
         },
         (error) => {
           console.error('Upload failed:', error);
+          alert('Failed to upload files');
         }
       );
     } else {
-      alert('Please select both files before continuing.');
+      alert('Please complete all steps before continuing.');
     }
   }
 }
@@ -134,43 +153,33 @@ export class AppComponent {
 python:
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-from werkzeug.utils import secure_filename
+import fitz  # PyMuPDF
 
 app = Flask(__name__)
 CORS(app)
 
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 @app.route('/upload', methods=['POST'])
 def upload_files():
-    if 'file1' not in request.files or 'file2' not in request.files:
-        return jsonify({'error': 'Both files are required.'}), 400
-
-    file1 = request.files['file1']
-    file2 = request.files['file2']
+    file1 = request.files.get('file1')
+    file2 = request.files.get('file2')
     action = request.form.get('action')
+    prompt = request.form.get('prompt')
 
-    # Save uploaded files to the upload folder
-    file1_path = os.path.join(UPLOAD_FOLDER, secure_filename(file1.filename))
-    file2_path = os.path.join(UPLOAD_FOLDER, secure_filename(file2.filename))
-    file1.save(file1_path)
-    file2.save(file2_path)
+    if not file1 or not file2:
+        return jsonify({"error": "Files not provided"}), 400
 
-    # Process files based on action (example responses)
-    if action == 'identify-differences':
-        message = 'Differences identified between the files (sample response)'
-    elif action == 'merge-documents':
-        message = 'Files merged successfully (sample response)'
-    else:
-        message = 'No valid action specified.'
+    # Example: Read content from file1 (PDF) using PyMuPDF
+    try:
+        with fitz.open(stream=file1.read(), filetype="pdf") as pdf:
+            content = ""
+            for page in pdf:
+                content += page.get_text()
 
-    return jsonify({
-        'message': message,
-        'file1_path': file1_path,
-        'file2_path': file2_path
-    }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    # Return the extracted content from file1 to the frontend
+    return jsonify({"content": content})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
