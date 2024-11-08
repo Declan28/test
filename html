@@ -1,9 +1,10 @@
+html:
 <div class="header">
   <h1>Morgan Stanley | AI at MS</h1>
 </div>
 
 <div class="container">
-  <h2>File Comparison</h2> <!-- Updated to h2 for better structure -->
+  <h2>File Comparison</h2>
 
   <div class="form-group">
     <label for="file1">Step 1. Upload content</label>
@@ -25,24 +26,23 @@
 </div>
 
 
-
 sass:
 .header
-  background-color: #003f87 // Dark blue background
+  background-color: #003f87
   color: white
   padding: 10px 20px
   text-align: center
 
 .container
   max-width: 600px
-  margin: 20px auto // Add margin for spacing below the header
+  margin: 20px auto
   padding: 20px
   border: 1px solid #ccc
   border-radius: 5px
   background-color: #f9f9f9
 
   h2
-    text-align: left // Align "File Comparison" to the left
+    text-align: left
 
   .form-group
     margin-bottom: 20px
@@ -74,46 +74,103 @@ sass:
 
   h2
     color: green
-    text-align: 
+    text-align: left
 
 
 ts:
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms'; // Import FormsModule for ngModel
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.sass'],
-  standalone: true,  // Make the component standalone
-  imports: [CommonModule, FormsModule] // Add CommonModule and FormsModule to support ngIf, ngFor, and ngModel
 })
 export class AppComponent {
   file1Name: string = '';
   file2Name: string = '';
   uploadSuccess: boolean = false;
-  selectedAction: string = 'identify-differences'; // Default action
+  selectedAction: string = 'identify-differences';
+  file1: File | null = null;
+  file2: File | null = null;
 
-  // Event handler for file selection
+  constructor(private http: HttpClient) {}
+
   onFileSelected(event: any, fileNumber: number) {
     const file: File = event.target.files[0];
-
     if (file) {
       if (fileNumber === 1) {
+        this.file1 = file;
         this.file1Name = file.name;
       } else if (fileNumber === 2) {
+        this.file2 = file;
         this.file2Name = file.name;
       }
     }
   }
 
-  // Event handler for the "Continue" button
   onUpload() {
-    if (this.file1Name && this.file2Name) {
-      this.uploadSuccess = true;
+    if (this.file1 && this.file2) {
+      const formData = new FormData();
+      formData.append('file1', this.file1);
+      formData.append('file2', this.file2);
+      formData.append('action', this.selectedAction);
+
+      this.http.post('http://localhost:5000/upload', formData).subscribe(
+        (response: any) => {
+          console.log('Upload successful:', response);
+          this.uploadSuccess = true;
+        },
+        (error) => {
+          console.error('Upload failed:', error);
+        }
+      );
     } else {
       alert('Please select both files before continuing.');
     }
   }
 }
+
+python:
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os
+from werkzeug.utils import secure_filename
+
+app = Flask(__name__)
+CORS(app)
+
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@app.route('/upload', methods=['POST'])
+def upload_files():
+    if 'file1' not in request.files or 'file2' not in request.files:
+        return jsonify({'error': 'Both files are required.'}), 400
+
+    file1 = request.files['file1']
+    file2 = request.files['file2']
+    action = request.form.get('action')
+
+    # Save uploaded files to the upload folder
+    file1_path = os.path.join(UPLOAD_FOLDER, secure_filename(file1.filename))
+    file2_path = os.path.join(UPLOAD_FOLDER, secure_filename(file2.filename))
+    file1.save(file1_path)
+    file2.save(file2_path)
+
+    # Process files based on action (example responses)
+    if action == 'identify-differences':
+        message = 'Differences identified between the files (sample response)'
+    elif action == 'merge-documents':
+        message = 'Files merged successfully (sample response)'
+    else:
+        message = 'No valid action specified.'
+
+    return jsonify({
+        'message': message,
+        'file1_path': file1_path,
+        'file2_path': file2_path
+    }), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
