@@ -11,7 +11,7 @@ html:
 
     <!-- Step 1: Upload Files -->
     <div class="form-group">
-      <label>Step 1. Upload Content</label>
+      <label>Step 1. Upload content</label>
       <div class="file-upload-container">
         <div class="file-upload-box" (click)="onFileUploadClick(1)">
           <input type="file" id="file1" (change)="onFileSelected($event, 1)" accept=".pdf" hidden />
@@ -28,23 +28,49 @@ html:
       </div>
     </div>
 
-    <!-- Step 2: Select Action -->
+    <!-- Step 2: Select Comparison Type -->
     <div class="form-group">
-      <label for="summaryFormat">Step 2. Select Action</label>
-      <select [(ngModel)]="selectedAction" id="summaryFormat">
-        <option value="identify-differences">Identify differences</option>
-        <option value="merge-documents">Merge documents</option>
+      <label for="comparisonType">Step 2. Select Comparison Type</label>
+      <select [(ngModel)]="selectedComparisonType" id="comparisonType" (change)="onComparisonTypeChange()">
+        <option value="envestnet-v-lineup-manager">Envestnet v Lineup Manager</option>
+        <option value="legal-contract">Legal/Contract</option>
       </select>
     </div>
 
-    <!-- Step 3: Enter Prompt -->
+    <!-- Step 3: Select Action -->
     <div class="form-group">
-      <label>Step 3. Enter Prompt</label>
+      <label for="action">Step 3. Select Action</label>
+      <select [(ngModel)]="selectedAction" id="action">
+        <option value="identify-differences">Identify differences</option>
+      </select>
+    </div>
+
+    <!-- Step 4: Comparison Criteria -->
+    <div class="form-group">
+      <label for="comparisonCriteria">Step 4. Comparison Criteria</label>
+      <select [(ngModel)]="selectedCriteria" id="comparisonCriteria">
+        <ng-container *ngIf="selectedComparisonType === 'envestnet-v-lineup-manager'">
+          <option value="fund-differences">Fund Differences</option>
+          <option value="gima-status-reasoning">GIMA Status/Reasoning</option>
+          <option value="performance">Performance</option>
+        </ng-container>
+        <ng-container *ngIf="selectedComparisonType === 'legal-contract'">
+          <option value="content">Content</option>
+          <option value="signee">Signee</option>
+        </ng-container>
+      </select>
+    </div>
+
+    <!-- Step 5: Prompt Input -->
+    <div class="form-group">
+      <label>Step 5. Enter prompt</label>
       <div class="prompt-container">
         <input type="text" [(ngModel)]="userPrompt" placeholder="Type a message" class="prompt-input" />
-        <button (click)="onSend()" class="send-button">Send</button>
       </div>
     </div>
+
+    <!-- Send Button Below Prompt -->
+    <button (click)="onSend()" class="send-button">Send</button>
 
     <!-- Response Section -->
     <div *ngIf="uploadSuccess" class="response-section">
@@ -53,6 +79,7 @@ html:
     </div>
   </div>
 </div>
+
 
 sass:
 .header-bar
@@ -162,18 +189,21 @@ sass:
       &::placeholder
         color: #aaa
 
-    .send-button
-      background-color: #007bff
-      color: white
-      border: none
-      border-radius: 20px
-      padding: 8px 16px
-      font-weight: bold
-      cursor: pointer
-      transition: background-color 0.2s ease
+  .send-button
+    background-color: #007bff
+    color: white
+    border: none
+    border-radius: 20px
+    padding: 8px 16px
+    font-weight: bold
+    cursor: pointer
+    margin-top: 10px // Adds space above the button
+    display: block
+    width: 100% // Makes it a full-width button
+    transition: background-color 0.2s ease
 
-      &:hover
-        background-color: #0056b3
+    &:hover
+      background-color: #0056b3
 
   select
     width: 100%
@@ -190,10 +220,10 @@ sass:
       color: #28a745
 
 ts:
-import { Component } from '@angular/core';
+import { Component, Renderer2 } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';  // Make sure FormsModule is imported
 import { HttpClientModule } from '@angular/common/http';
 
 @Component({
@@ -201,28 +231,31 @@ import { HttpClientModule } from '@angular/common/http';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.sass'],
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule] // Ensure FormsModule is included here
+  imports: [CommonModule, FormsModule, HttpClientModule]
 })
 export class AppComponent {
   file1Name: string = '';
   file2Name: string = '';
   uploadSuccess: boolean = false;
+  selectedComparisonType: string = 'envestnet-v-lineup-manager';
   selectedAction: string = 'identify-differences';
-  userPrompt: string = '';
+  selectedCriteria: string = '';
+  userPrompt: string = '';  // Optional prompt field
   responseContent: string = '';
 
   private file1: File | null = null;
   private file2: File | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private renderer: Renderer2) {}
 
-  onFileSelected(event: any, fileNumber: number) {
-    const file: File = event.target.files[0];
+  onFileSelected(event: Event, fileNumber: number) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (file) {
       if (fileNumber === 1) {
         this.file1 = file;
         this.file1Name = file.name;
-      } else if (fileNumber === 2) {
+      } else {
         this.file2 = file;
         this.file2Name = file.name;
       }
@@ -236,13 +269,24 @@ export class AppComponent {
     }
   }
 
+  onComparisonTypeChange() {
+    // Reset selected criteria when comparison type changes
+    this.selectedCriteria = '';
+  }
+
   onSend() {
-    if (this.file1 && this.file2 && this.userPrompt) {
+    if (this.file1 && this.file2) {  // Removed userPrompt requirement
       const formData = new FormData();
       formData.append('file1', this.file1);
       formData.append('file2', this.file2);
+      formData.append('comparisonType', this.selectedComparisonType);
       formData.append('action', this.selectedAction);
-      formData.append('prompt', this.userPrompt);
+      formData.append('criteria', this.selectedCriteria);
+
+      // Only append the prompt if it has a value
+      if (this.userPrompt) {
+        formData.append('prompt', this.userPrompt);
+      }
 
       this.http.post<any>('http://127.0.0.1:5000/upload', formData).subscribe(
         (response) => {
@@ -255,7 +299,7 @@ export class AppComponent {
         }
       );
     } else {
-      alert('Please complete all steps before sending.');
+      alert('Please upload both files before sending.');
     }
   }
 }
@@ -272,16 +316,21 @@ CORS(app)
 def upload_files():
     file1 = request.files.get('file1')
     file2 = request.files.get('file2')
+    comparison_type = request.form.get('comparisonType')
     action = request.form.get('action')
+    criteria = request.form.get('criteria')
     prompt = request.form.get('prompt')
 
     if not file1 or not file2:
         return jsonify({"error": "Files not provided"}), 400
 
-    # Read content from file1 (PDF) using PyMuPDF
+    # Process the files based on the comparison type and criteria
+    content = f"Comparison Type: {comparison_type}, Action: {action}, Criteria: {criteria}, Prompt: {prompt}"
+
+    # Example: Process PDF content (file1) using PyMuPDF
     try:
         with fitz.open(stream=file1.read(), filetype="pdf") as pdf:
-            content = ""
+            content += "\nFile 1 Content:\n"
             for page in pdf:
                 content += page.get_text()
 
